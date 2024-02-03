@@ -1,4 +1,7 @@
 import datetime
+import json
+import urllib.request
+from urllib.error import HTTPError
 
 
 def get_amount(available_currencies) -> tuple[float, str]:
@@ -88,6 +91,34 @@ def another_payment() -> bool:
             print("Nieprawidłowa wartość, wybierz T lub N")
 
 
+def find_exchange_rate(currency: str, date: datetime.date) -> tuple[datetime.date, float, str]:
+    """
+    Pobiera średni kurs podanej waluty z NBP Web API dla podanej daty.
+
+    Jeśli na stronie brakuje danych dla podanej daty, szuka danych
+    z dni poprzednich.
+
+    :param currency: kod waluty.
+    :param date: data.
+    :return: zwraca kurs, datę, dla której znaleziono dane, walutę.
+    """
+    while True:
+        try:
+            filename = 'http://api.nbp.pl/api/exchangerates/rates/a/' + currency + '/' + str(date) + '/?format=json'
+            with urllib.request.urlopen(filename) as url:
+                data = json.load(url)
+                break
+        except urllib.error.HTTPError as err:
+            if err.getcode() == 404:
+                date -= datetime.timedelta(days=1)
+            elif err.getcode() == 400:
+                raise ValueError('Nieprawidłowy link')
+            else:
+                raise SystemExit(err)
+    mid_exchange_rate = data['rates'][0]['mid']
+    return date, mid_exchange_rate, currency
+
+
 def main():
     currencies = ('PLN', 'EUR', 'USD', 'GBP')
 
@@ -108,12 +139,18 @@ def main():
             print(f"Płatność nr{payment_num}: {payment_data['date']}, {payment_data['value']} "
                   f"{payment_data['currency']}")
 
+            if payment_data['currency'] != 'PLN':
+                payment_exchange_data = find_exchange_rate(payment_data['currency'], payment_data['date'])
+                print(f"Dostępny kurs: {payment_exchange_data[0]} {payment_exchange_data[1]} {payment_exchange_data[2]}")
+
             if not another_payment():
                 break
     else:
         # Jeśli faktura została wystawiona w walucie obcej, to płatność może być
         # w tej samej walucie lub w PLN.
         payment_currencies = ('PLN', invoice_currency)
+        invoice_exchange_data = find_exchange_rate(invoice_currency, invoice_date)
+        print(f"Dostępny kurs: {invoice_exchange_data[0]} {invoice_exchange_data[1]} {invoice_exchange_data[2]}")
 
         while True:
             payment_num += 1
@@ -121,6 +158,10 @@ def main():
 
             print(f"Płatność nr{payment_num}: {payment_data['date']}, {payment_data['value']} "
                   f"{payment_data['currency']}")
+
+            if payment_data['currency'] != 'PLN':
+                payment_exchange_data = find_exchange_rate(payment_data['currency'], payment_data['date'])
+                print(f"Dostępny kurs: {payment_exchange_data[0]} {payment_exchange_data[1]} {payment_exchange_data[2]}")
 
             if not another_payment():
                 break
