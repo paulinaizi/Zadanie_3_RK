@@ -53,6 +53,41 @@ def get_date() -> datetime.date:
                 return date
 
 
+def get_payment(invoice_date: datetime.date, payment_currencies):
+    """
+    Pobiera dane płatności od użytkownika.
+
+    :param invoice_date: data faktury.
+    :param payment_currencies: możliwe waluty.
+    :return: słownik z datą, kwotą i walutą.
+    """
+    print("Wprowadź dane płatności: ")
+    while True:
+        payment_date = get_date()
+        if payment_date < invoice_date:
+            print("Data nie może być wcześniejsza niż data faktury")
+        else:
+            break
+    payment_value, payment_currency = get_amount(payment_currencies)
+    payment_data = {'date': payment_date,
+                    'value': payment_value,
+                    'currency': payment_currency}
+    return payment_data
+
+
+def another_payment() -> bool:
+    """Pobiera informację od użytkownika, czy chce wprowadzić
+        kolejną płatność"""
+    while True:
+        user_input = input("Czy chcesz wprowadzić kolejną płatność? (T/N): ").upper()
+        if user_input == 'T':
+            return True
+        elif user_input == 'N':
+            return False
+        else:
+            print("Nieprawidłowa wartość, wybierz T lub N")
+
+
 def main():
     currencies = ('PLN', 'EUR', 'USD', 'GBP')
 
@@ -60,6 +95,35 @@ def main():
     invoice_date = get_date()
     invoice_value, invoice_currency = get_amount(currencies)
     print(f"Faktura: {invoice_date}, {invoice_value} {invoice_currency}")
+
+    payment_num = 0
+
+    if invoice_currency == 'PLN':
+        # Jeśli faktura została wystawiona w PLN, to płatność może być w dowolnej walucie.
+        payment_currencies = currencies
+        while True:
+            payment_num += 1
+            payment_data = get_payment(invoice_date, payment_currencies)
+
+            print(f"Płatność nr{payment_num}: {payment_data['date']}, {payment_data['value']} "
+                  f"{payment_data['currency']}")
+
+            if not another_payment():
+                break
+    else:
+        # Jeśli faktura została wystawiona w walucie obcej, to płatność może być
+        # w tej samej walucie lub w PLN.
+        payment_currencies = ('PLN', invoice_currency)
+
+        while True:
+            payment_num += 1
+            payment_data = get_payment(invoice_date, payment_currencies)
+
+            print(f"Płatność nr{payment_num}: {payment_data['date']}, {payment_data['value']} "
+                  f"{payment_data['currency']}")
+
+            if not another_payment():
+                break
 
 
 if __name__ == "__main__":
