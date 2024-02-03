@@ -119,6 +119,26 @@ def find_exchange_rate(currency: str, date: datetime.date) -> tuple[datetime.dat
     return date, mid_exchange_rate, currency
 
 
+def remaining_payment_info(remaining_payment: float, invoice_currency: str) -> bool:
+    """
+    Wyświetla informacje o stanie płatności.
+
+    :param remaining_payment: stan płatności.
+    :param invoice_currency: waluta faktury.
+    :return: zwraca True, jeśli faktura została spłacona w całości lub z nadpłatą,
+    w pozostałym przypadku zwraca False.
+    """
+    if remaining_payment < 0:
+        print(f"Nadpłata: {abs(remaining_payment):.2f} {invoice_currency}")
+        return True
+    elif remaining_payment > 0:
+        print(f"Brakuje do spłaty: {remaining_payment:.2f} {invoice_currency}")
+        return False
+    else:
+        print("Kwota została w pełni spłacona")
+        return True
+
+
 def main():
     currencies = ('PLN', 'EUR', 'USD', 'GBP')
 
@@ -127,6 +147,7 @@ def main():
     invoice_value, invoice_currency = get_amount(currencies)
     print(f"Faktura: {invoice_date}, {invoice_value} {invoice_currency}")
 
+    remaining_payment = invoice_value
     payment_num = 0
 
     if invoice_currency == 'PLN':
@@ -135,13 +156,21 @@ def main():
         while True:
             payment_num += 1
             payment_data = get_payment(invoice_date, payment_currencies)
-
             print(f"Płatność nr{payment_num}: {payment_data['date']}, {payment_data['value']} "
                   f"{payment_data['currency']}")
 
-            if payment_data['currency'] != 'PLN':
+            if payment_data['currency'] == invoice_currency:
+                remaining_payment -= payment_data['value']
+            else:
                 payment_exchange_data = find_exchange_rate(payment_data['currency'], payment_data['date'])
-                print(f"Dostępny kurs: {payment_exchange_data[0]} {payment_exchange_data[1]} {payment_exchange_data[2]}")
+                payment_exchange_rate = payment_exchange_data[1]
+                exchanged_value = payment_data['value'] * payment_exchange_rate
+                remaining_payment -= exchanged_value
+                print(f"Kwota przeliczona: {exchanged_value:.2f} {invoice_currency}")
+                print(f"Zastosowano kurs: {payment_exchange_data[0]}, {payment_exchange_data[1]} {payment_exchange_data[2]}")
+
+            if remaining_payment_info(remaining_payment, invoice_currency):
+                break
 
             if not another_payment():
                 break
@@ -149,19 +178,25 @@ def main():
         # Jeśli faktura została wystawiona w walucie obcej, to płatność może być
         # w tej samej walucie lub w PLN.
         payment_currencies = ('PLN', invoice_currency)
-        invoice_exchange_data = find_exchange_rate(invoice_currency, invoice_date)
-        print(f"Dostępny kurs: {invoice_exchange_data[0]} {invoice_exchange_data[1]} {invoice_exchange_data[2]}")
 
         while True:
             payment_num += 1
             payment_data = get_payment(invoice_date, payment_currencies)
-
             print(f"Płatność nr{payment_num}: {payment_data['date']}, {payment_data['value']} "
                   f"{payment_data['currency']}")
 
-            if payment_data['currency'] != 'PLN':
-                payment_exchange_data = find_exchange_rate(payment_data['currency'], payment_data['date'])
-                print(f"Dostępny kurs: {payment_exchange_data[0]} {payment_exchange_data[1]} {payment_exchange_data[2]}")
+            if payment_data['currency'] == invoice_currency:
+                remaining_payment -= payment_data['value']
+            else:
+                payment_exchange_data = find_exchange_rate(invoice_currency, payment_data['date'])
+                payment_exchange_rate = payment_exchange_data[1]
+                exchanged_value = payment_data['value'] / payment_exchange_rate
+                remaining_payment -= exchanged_value
+                print(f"Kwota przeliczona: {exchanged_value:.2f} {invoice_currency}")
+                print(f"Zastosowano kurs: {payment_exchange_data[0]}, {payment_exchange_data[1]} {payment_exchange_data[2]}")
+
+            if remaining_payment_info(remaining_payment, invoice_currency):
+                break
 
             if not another_payment():
                 break
