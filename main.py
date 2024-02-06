@@ -139,6 +139,18 @@ def remaining_payment_info(remaining_payment: float, invoice_currency: str) -> b
         return True
 
 
+def calculate_exchange_difference(value: float, exchange_rate_invoice: float, exchange_rate_payment: float) -> float:
+    """
+    Oblicza różnicę kursową.
+
+    :param value: kwota
+    :param exchange_rate_invoice: kurs zastosowany dla faktury.
+    :param exchange_rate_payment: kurs zastosowany dla płatności.
+    :return: kwota przemnożona przez różnicę zastosowanych kursów.
+    """
+    return value * (exchange_rate_payment - exchange_rate_invoice)
+
+
 def main():
     currencies = ('PLN', 'EUR', 'USD', 'GBP')
 
@@ -167,7 +179,8 @@ def main():
                 exchanged_value = payment_data['value'] * payment_exchange_rate
                 remaining_payment -= exchanged_value
                 print(f"Kwota przeliczona: {exchanged_value:.2f} {invoice_currency}")
-                print(f"Zastosowano kurs: {payment_exchange_data[0]}, {payment_exchange_data[1]} {payment_exchange_data[2]}")
+                print(f"Zastosowano kurs: {payment_exchange_data[0]}, {payment_exchange_data[1]} "
+                      f"{payment_exchange_data[2]}")
 
             if remaining_payment_info(remaining_payment, invoice_currency):
                 break
@@ -186,6 +199,12 @@ def main():
                   f"{payment_data['currency']}")
 
             if payment_data['currency'] == invoice_currency:
+                invoice_exchange_data = find_exchange_rate(invoice_currency, invoice_date)
+                print(f"Kurs z faktury: {invoice_exchange_data[0]}, {invoice_exchange_data[1]}")
+                payment_exchange_data = find_exchange_rate(payment_data['currency'], payment_data['date'])
+                print(f"Kurs z płatności: {payment_exchange_data[0]}, {payment_exchange_data[1]}")
+                exchange_difference = calculate_exchange_difference(payment_data['value'], invoice_exchange_data[1], payment_exchange_data[1])
+                print(f"Różnice kursowe: {exchange_difference:.2f}")
                 remaining_payment -= payment_data['value']
             else:
                 payment_exchange_data = find_exchange_rate(invoice_currency, payment_data['date'])
@@ -193,7 +212,8 @@ def main():
                 exchanged_value = payment_data['value'] / payment_exchange_rate
                 remaining_payment -= exchanged_value
                 print(f"Kwota przeliczona: {exchanged_value:.2f} {invoice_currency}")
-                print(f"Zastosowano kurs: {payment_exchange_data[0]}, {payment_exchange_data[1]} {payment_exchange_data[2]}")
+                print(f"Zastosowano kurs: {payment_exchange_data[0]}, {payment_exchange_data[1]} "
+                      f"{payment_exchange_data[2]}")
 
             if remaining_payment_info(remaining_payment, invoice_currency):
                 break
