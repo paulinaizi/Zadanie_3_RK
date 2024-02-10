@@ -198,11 +198,13 @@ def main():
             print(f"Płatność nr{payment_num}: {payment_data['date']}, {payment_data['value']} "
                   f"{payment_data['currency']}")
 
+            # Różnice kursowe występują, gdy zarówno faktura, jak i płatność
+            # jest w walucie obcej.
             if payment_data['currency'] == invoice_currency:
                 invoice_exchange_data = find_exchange_rate(invoice_currency, invoice_date)
-                print(f"Kurs z faktury: {invoice_exchange_data[0]}, {invoice_exchange_data[1]}")
+                print(f"Kurs z faktury: {invoice_exchange_data[0]}, {invoice_exchange_data[1]} {invoice_currency}")
                 payment_exchange_data = find_exchange_rate(payment_data['currency'], payment_data['date'])
-                print(f"Kurs z płatności: {payment_exchange_data[0]}, {payment_exchange_data[1]}")
+                print(f"Kurs z płatności: {payment_exchange_data[0]}, {payment_exchange_data[1]} {payment_data['currency']}")
                 exchange_difference = calculate_exchange_difference(payment_data['value'], invoice_exchange_data[1], payment_exchange_data[1])
                 print(f"Różnice kursowe: {exchange_difference:.2f}")
                 remaining_payment -= payment_data['value']
